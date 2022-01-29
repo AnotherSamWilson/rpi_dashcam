@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# This script requires a lifepow4er UPS, and 
+# This script requires a lifepow4er UPS, and
 # this package be installed:
 # https://github.com/xorbit/LiFePO4wered-Pi
 
@@ -24,7 +24,7 @@ NOW=$( date '+%F_%H-%M-%S' )
 
 # Define paths
 GPIO_PATH=/sys/class/gpio
-VIDEO_STORAGE_PATH=/dddd
+WD=/home/pi/rpi_dashcam
 
 # Define the amount of time the pi should stay on
 # after UPS loses input power
@@ -40,49 +40,43 @@ MIN_KBYTES_TO_RECORD=3000000 # 3GB
 # Since we just booted up, assume power is on.
 power_off_flag=0
 
-while true:
+while :; do
 
-		 
-	partition_memory_free=$(df -B K --output=avail /dev/sda1 | tail -n 1)
+	partition_memory_free=$(df -B K --output=avail ${WD} | tail -n 1)
 	partition_memory_free=${partition_memory_free%?} # Removes the unit at the end
 
 	# Spin off a child process to remove old videos if we don't have enough memory
-	while $partition_memory_free < $MIN_KBYTES_TO_RECORD &
-		
+	while (( $partition_memory_free < $MIN_KBYTES_TO_RECORD)); do
+
 		rm $VIDEO_STORAGE_PATH/$( ls -1t | tail -1 )
 		# Get the total spaced used on the partition the videos are being stored
 		partition_memory_used=$(du -B M $VIDEO_STORAGE_PATH | cut -f 1 -d "   ")
 		partition_memory_free=$(df -B K --output=avail /dev/sda1 | tail -n 1)
 		partition_memory_free=${partition_memory_free%?} # Removes the unit at the end
-
-	
-
-	# Delete any videos that are over 4 hours old
-	
+	done
 
 	# Get input voltage to the UPS. If it is near 0, assume car is off.
-	VIN=$( lifepow4er-cli get vin )
+	VIN=$( lifepo4wered-cli get vin )
 
 	# power_off_time should be the time we first recognized the power has
 	# been shut off
-	if ( $VIN < 0.05 )
-	then
-		if ( power_off_flag == 0 )
-		then
+	if (( $VIN < 200 )); then
+		if (( power_off_flag == 0 )); then
 			power_off_flag=1
-			power_off_time=$(date +%s) + $BATTERY_POWER_SECONDS
+			power_off_time=$(date +%s)+$BATTERY_POWER_SECONDS
+			# power_off_time=$power_off_time+$BATTERY_POWER_SECONDS
 		fi
-		current_video_length=$(( ($power_off_time - $(date+%s)) < VIDEO_LENGTH ? ($power_off_time - $(date+%s)) : VIDEO_LENGTH ))
+		current_video_length=$(( ($power_off_time-$(date +%s)) < VIDEO_LENGTH ? ($power_off_time-$(date +%s)) : VIDEO_LENGTH ))
 	else
 		power_off_flag=0
 		current_video_length=$VIDEO_LENGTH
 	fi
 
 	# If our power off flag = 1 and the required number of seconds has elapsed, shut down.
-	if ( $power_off_flag == 1 ) && (( ($(date +%s) > $power_off_time ))
-	then
+	if (( $power_off_flag == 1 )) && (( $(date +%s) > $power_off_time )); then
 		sudo shutdown -h now
 	fi
 
-	libcamera-vid -c config.txt -t $( $current_video_length * 1000 ) -o 
+	libcamera-vid -c config.txt -t $(( $current_video_length*1000 )) -o temp.h264
+done
 
