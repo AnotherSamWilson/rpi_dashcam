@@ -18,10 +18,6 @@
 	# 3) Are we past our shutdown time?
 		# If so, shut down the pi.
 
-
-# Declare Date
-NOW=$( date '+%F_%H-%M-%S' )
-
 # Define paths
 GPIO_PATH=/sys/class/gpio
 WD=/home/pi/rpi_dashcam
@@ -31,7 +27,7 @@ WD=/home/pi/rpi_dashcam
 BATTERY_POWER_SECONDS=3600
 
 # Define how long each video should be in seconds
-VIDEO_LENGTH=600
+VIDEO_LENGTH=10
 
 # Define the minimum free memory required before
 # we start deleting old videos
@@ -41,6 +37,9 @@ MIN_KBYTES_TO_RECORD=3000000 # 3GB
 power_off_flag=0
 
 while :; do
+
+	# Declare Date
+	NOW=$( date '+%F_%H-%M-%S' )
 
 	partition_memory_free=$(df -B K --output=avail ${WD} | tail -n 1)
 	partition_memory_free=${partition_memory_free%?} # Removes the unit at the end
@@ -64,7 +63,6 @@ while :; do
 		if (( power_off_flag == 0 )); then
 			power_off_flag=1
 			power_off_time=$(date +%s)+$BATTERY_POWER_SECONDS
-			# power_off_time=$power_off_time+$BATTERY_POWER_SECONDS
 		fi
 		current_video_length=$(( ($power_off_time-$(date +%s)) < VIDEO_LENGTH ? ($power_off_time-$(date +%s)) : VIDEO_LENGTH ))
 	else
@@ -77,6 +75,6 @@ while :; do
 		sudo shutdown -h now
 	fi
 
-	libcamera-vid -c config.txt -t $(( $current_video_length*1000 )) -o temp.h264
+	libcamera-vid -c config.txt -t $(( $current_video_length*1000 )) -o videos/footage_${NOW}.h264
 done
 
