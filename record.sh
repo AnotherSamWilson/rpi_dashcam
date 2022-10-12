@@ -14,20 +14,19 @@
 	# 3) Are we past our shutdown time?
 		# If so, shut down the pi.
 
-# Define paths
-WD=/home/pi/rpi_dashcam
-VS=/D/footage
+
+VIDEO_STORAGE_PATH=$1
 
 # Define the amount of time the pi should stay on
 # after UPS loses input power
-BATTERY_POWER_SECONDS=20
+BATTERY_POWER_SECONDS=$2
 
 # Define how long each video should be in seconds
-VIDEO_LENGTH=5
+VIDEO_LENGTH=$3
 
 # If our shutdown time is less than this many seconds
 # in the future, don't bother recording a video.
-MIN_VIDEO_LENGTH=2
+MIN_VIDEO_LENGTH=5
 
 # Define the minimum free memory required before
 # we start deleting old videos
@@ -36,7 +35,6 @@ MIN_KBYTES_TO_RECORD=3000000 # 3GB
 
 #################
 # END USER VALUES
-
 
 # Since we just booted up, assume power is on.
 power_off_flag=0
@@ -55,7 +53,7 @@ while :; do
 	NOW=$( date '+%F_%H-%M-%S' )
 
 	# Script deletes videos in the background if they are too old
-	./delvids.sh ${WD} $MIN_KBYTES_TO_RECORD &
+	./delvids.sh $VIDEO_STORAGE_PATH $MIN_KBYTES_TO_RECORD &
 
 	# Get input voltage to the UPS. If it is near 0, assume car is off.
 	VIN=$( lifepo4wered-cli get vin )
@@ -81,5 +79,5 @@ while :; do
 	# As of now libcamera-vid does not have native timestamp overlay. We save timestamps
 	# in a separate folder and use mkvmerge to create a final .mkv file.
 	echo "recording video of length" $current_video_length
-	libcamera-vid -n -c config.txt -t $(( $current_video_length*1000 )) -o videos/footage_${NOW}.h264
+	libcamera-vid -n -c config.txt -t $(( $current_video_length*1000 )) -o ${VIDEO_STORAGE_PATH}/footage_${NOW}.h264
 done
