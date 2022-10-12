@@ -1,4 +1,5 @@
-width=1920 
-height=1080 
+width=1632
+height=1224 
 intra=1
+mode=1632:1224:10
 save-pts=timestamps.txt
