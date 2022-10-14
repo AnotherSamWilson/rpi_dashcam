@@ -57,10 +57,15 @@ while :; do
 
 	# Get input voltage to the UPS. If it is near 0, assume car is off.
 	VIN=$( lifepo4wered-cli get vin )
+	VBAT=$( lifepo4wered-cli get vbat )
 
 	# power_off_time should be the time we first recognized the power has been shut off
 	if (( $VIN < 200 )); then
 		echo "power off"
+		if (( $VBAT < 3000 )); then
+			echo "Battery voltage is low: " $VBAT ", shutting down"
+			sudo shutdown -h now
+		fi
 		if (( power_off_flag == 0 )); then
 			power_off_flag=1
 			power_off_time=$(date +%s)+$BATTERY_POWER_SECONDS
@@ -70,6 +75,8 @@ while :; do
 		power_off_flag=0
 		current_video_length=$VIDEO_LENGTH
 	fi
+
+
 
 	# If our power off flag = 1 and the required number of seconds has elapsed, shut down.
 	if (( $power_off_flag == 1 )) && (( $(date +%s) >= $power_off_time-$MIN_VIDEO_LENGTH )); then
